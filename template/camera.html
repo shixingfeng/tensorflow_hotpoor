@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>PoseNet - Camera Feed Demo</title>
+    <style>
+    .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        color: black;
+    }
+
+    .footer-text {
+        max-width: 600px;
+        text-align: center;
+        margin: auto;
+    }
+
+    @media only screen and (max-width: 600px) {
+      .footer-text, .dg {
+        display: none;
+      }
+    }
+    </style>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://unpkg.com/@tensorflow/tfjs"></script>
+    <script src="https://unpkg.com/@tensorflow-models/posenet"></script>
+</head>
+
+<body>
+    <img id='cat' style="width:250px;height: 300px;" src='/static/images/cat.jpg '/>
+    <canvas id="canvas"></canvas>
+    <div id='main' style='display:;'>
+        <video id="video" playsinline style=" -moz-transform: scaleX(-1);
+        -o-transform: scaleX(-1);
+        -webkit-transform: scaleX(-1);
+        transform: scaleX(-1);
+        display: ;
+        ">
+        </video>
+        <canvas id="output" />
+    </div>
+</body>
+    <script type="text/javascript">
+        var imageScaleFactor = 0.5;
+        var outputStride = 16;
+        var flipHorizontal = false;
+
+        var imageElement = document.getElementById('cat');
+
+        var pose_now = null
+        var pose_now_plus = {}
+        posenet.load().then(function(net){
+          return net.estimateSinglePose(imageElement, imageScaleFactor, flipHorizontal, outputStride)
+        }).then(function(pose){
+          console.log(pose);
+          pose_now = pose;
+          draw(pose_now)
+        })
+
+        function draw_video(pose){
+            // var canvas = document.getElementById('output');
+            var ctx = canvas.getContext('2d');
+            // canvas.width = 300;
+            // canvas.height = 250;  
+            ctx.clearRect(0, 0, 300, 250);
+
+            var i, keypoint, len, ref;
+            ref = pose.keypoints;
+            for (i = 0, len = ref.length; i < len; i++) {
+              keypoint = ref[i];
+              console.log(keypoint.position);
+              draw_point(keypoint.position);
+              pose_now_plus[keypoint.part]=keypoint.position
+            }
+            // draw_line(pose_now_plus,ctx)
+        }
+        function draw(pose){
+            var canvas = document.getElementById('canvas');
+            var ctx = canvas.getContext('2d');
+            canvas.width = 250;
+            canvas.height = 300;  
+            ctx.clearRect(0, 0, 250, 300);
+
+            var i, keypoint, len, ref;
+            ref = pose.keypoints;
+            for (i = 0, len = ref.length; i < len; i++) {
+              keypoint = ref[i];
+              console.log(keypoint.position);
+              draw_point(keypoint.position);
+              pose_now_plus[keypoint.part]=keypoint.position
+            }
+            draw_line(pose_now_plus)
+        }
+        function draw_line(pose_now_plus,ctx) {
+            // var c=document.getElementById("output");
+            // ctx.clearRect(0, 0, 300, 250);
+            ctx.strokeStyle = "#ff0000";
+            // 左肩膀
+            ctx.moveTo(pose_now_plus["leftShoulder"].x,pose_now_plus["leftShoulder"].y)
+            ctx.lineTo(pose_now_plus["leftElbow"].x,pose_now_plus["leftElbow"].y)
+            ctx.lineTo(pose_now_plus["leftWrist"].x,pose_now_plus["leftWrist"].y)
+
+            // 右肩
+            ctx.moveTo(pose_now_plus["rightShoulder"].x,pose_now_plus["rightShoulder"].y)
+            ctx.lineTo(pose_now_plus["rightElbow"].x,pose_now_plus["rightElbow"].y)
+            ctx.lineTo(pose_now_plus["rightWrist"].x,pose_now_plus["rightWrist"].y)
+
+            // 左肩膀+右肩膀
+            ctx.moveTo(pose_now_plus["leftShoulder"].x,pose_now_plus["leftShoulder"].y)
+            ctx.lineTo(pose_now_plus["rightShoulder"].x,pose_now_plus["rightShoulder"].y)
+            
+            // 左肩膀+左髋骨
+            ctx.moveTo(pose_now_plus["leftShoulder"].x,pose_now_plus["leftShoulder"].y)
+            ctx.lineTo(pose_now_plus["leftHip"].x,pose_now_plus["leftHip"].y)
+            
+            // 右肩膀+右髋骨
+            ctx.moveTo(pose_now_plus["rightShoulder"].x,pose_now_plus["rightShoulder"].y)
+            ctx.lineTo(pose_now_plus["rightHip"].x,pose_now_plus["rightHip"].y)
+
+            ctx.moveTo(pose_now_plus["leftHip"].x,pose_now_plus["leftHip"].y)
+            ctx.lineTo(pose_now_plus["rightHip"].x,pose_now_plus["rightHip"].y)
+
+            ctx.moveTo(pose_now_plus["leftHip"].x,pose_now_plus["leftHip"].y)
+            ctx.lineTo(pose_now_plus["leftKnee"].x,pose_now_plus["leftKnee"].y)
+            ctx.lineTo(pose_now_plus["leftAnkle"].x,pose_now_plus["leftAnkle"].y)
+            // ctx.stroke();
+
+            ctx.moveTo(pose_now_plus["rightHip"].x,pose_now_plus["rightHip"].y)
+            ctx.lineTo(pose_now_plus["rightKnee"].x,pose_now_plus["rightKnee"].y)
+            ctx.lineTo(pose_now_plus["rightAnkle"].x,pose_now_plus["rightAnkle"].y)
+            ctx.stroke();
+
+            // 贴盔甲
+            // var img = new Image();
+            // img.src = "static/images/kuijia.png";
+            // img.onload = function() {
+            //     ctx.globalAlpha = 0.5; 
+            //     ctx.scale(1.2,1.2);
+            //     ctx_b_w = pose_now_plus["leftHip"].x-pose_now_plus["rightShoulder"].x
+            //     ctx_b_h = pose_now_plus["leftHip"].y-pose_now_plus["rightShoulder"].y
+            //     ctx_a_x = pose_now_plus["rightShoulder"].x*0.8
+            //     ctx_a_y = pose_now_plus["rightShoulder"].y*0.8-ctx_b_h*0.1
+                
+            //     ctx.drawImage(img, ctx_a_x, ctx_a_y, ctx_b_w, ctx_b_h);
+            // }
+                
+        }
+        function draw_point(point) {
+            //获取画笔
+            let ctx=getCTX();
+            //设置绘制颜色
+            ctx.fillStyle="white";
+            //绘制成矩形
+            ctx.fillRect(point.x-2,point.y-2,4,4);
+
+            //设置字体样式
+            ctx.font = "16px bold 宋体";
+            //绘制文字
+            // ctx.fillText("("+point.x+","+point.y+")",point.x,point.y);
+        }
+        function getCTX() {
+            let c=document.getElementById("output");
+            let ctx=c.getContext("2d");
+            // ctx.clearRect(0,0,c.width,c.height);
+            return ctx;
+        }
+
+
+
+        function isAndroid() {
+          return /Android/i.test(navigator.userAgent);
+        }
+
+        function isiOS() {
+          return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        }
+
+        function isMobile() {
+          return isAndroid() || isiOS();
+        }
+
+        var videoWidth  = 300
+        var videoHeight = 250
+
+        async function setupCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.log('Browser API navigator.mediaDevices.getUserMedia not available');
+            }
+            var video = document.getElementById('video');
+            video.width = videoWidth;
+            video.height = videoHeight;
+            var mobile = isMobile();
+            var stream = await navigator.mediaDevices.getUserMedia({
+                'audio': false,
+                'video': {
+                  facingMode: 'user',
+                  width: mobile ? undefined : videoWidth,
+                  height: mobile ? undefined : videoHeight,
+                },
+            });
+            video.srcObject = stream;
+            return new Promise((resolve) => {
+                video.onloadedmetadata = () => {
+                    resolve(video);
+                };
+            });
+        }
+        async function loadVideo() {
+            var video = await setupCamera();
+            video.play();
+
+            return video;
+        }
+        function detectPoseInRealTime(video,net){
+            var canvas = document.getElementById('output');
+            var ctx = canvas.getContext('2d');
+            var flipHorizontal = true;
+            canvas.width = videoWidth;
+            canvas.height = videoHeight;
+            async function poseDetectionFrame() {
+                var _imageScaleFactor = imageScaleFactor
+                var _outputStride = outputStride
+                var poses = [];
+                var minPoseConfidence;
+                var minPartConfidence;
+                const pose = await net.estimateSinglePose(
+                    video, imageScaleFactor, flipHorizontal, outputStride);
+                ctx.clearRect(0, 0, 250, 300);
+                poses.push(pose)
+                console.log(poses)
+                ctx.save();
+                ctx.scale(-1, 1);
+                ctx.translate(-videoWidth, 0);
+                ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+                ctx.restore();
+                draw_video(pose)
+
+                requestAnimationFrame(poseDetectionFrame)
+            }
+            poseDetectionFrame()
+        }
+
+        async function bindPage() {
+          // Load the PoseNet model weights with architecture 0.75
+          console.log("bindPage")
+          const net = await posenet.load(0.75);
+
+          document.getElementById('main').style.display = 'block';
+
+          let video;
+
+          try {
+            video = await loadVideo();
+          } catch (e) {
+            throw e;
+          }
+
+          // setupGui([], net);
+          // setupFPS();
+          detectPoseInRealTime(video, net);
+        }
+
+        navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+        bindPage();
+        
+    </script>
+</html>
